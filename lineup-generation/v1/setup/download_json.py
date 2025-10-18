@@ -11,6 +11,6 @@ def dowload_json(url, output_file):
 
 json_url = "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json"
 
-output_file_path = "/Users/jameskendrick/Code/cv/features/lineup-generation/v1/static/schedule_raw.json"
+output_file_path = "/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v1/static/schedule_raw2025-2026.json"
 
 dowload_json(json_url, output_file_path)
