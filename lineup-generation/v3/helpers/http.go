@@ -1,4 +1,4 @@
-package models
+package helpers
 
 // Incoming request body to begin the lineup generation process
 type Request struct {
@@ -14,4 +14,11 @@ type Response struct {
 	Timestamp string
 	Week int
 	Threshold float64
+}
+
+type Roster struct {
+	Day 	  	int
+	Additions []Player
+	Removals  []Player
+	Roster	  map[string]Player
 }

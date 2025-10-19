@@ -1,9 +1,0 @@
-steps:
-- name: 'gcr.io/cloud-builders/docker'
-  script: |
-    docker build -t us-central1-docker.pkg.dev/courtvision-apis/courtvision-repo/cv-feat-lineup-generation:v3 .
-  automapSubstitutions: true
-images:
-- 'us-central1-docker.pkg.dev/courtvision-apis/courtvision-repo/cv-feat-lineup-generation:v4'
-
-# gcloud builds submit --region=us-central1 --config=cloudbuild.yaml

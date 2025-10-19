@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"encoding/json"
 
-	u "v3/models"
+	h "v3/helpers"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 		// Set CORS headers for actual request
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		
-		var request u.Request
+		var request h.Request
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			fmt.Println(err)
@@ -56,6 +56,29 @@ func main() {
 	}
 }
 
-func GenerateLineup(request u.Request) u.Response {
-	return u.Response{}
+func GenerateLineup(request h.Request) h.Response {
+	// Initialize the schedule for the specific week requested
+	schedule, err := h.LoadWeekSchedule("./static/schedule2025-2026.json", request.Week)
+	if err != nil {
+		fmt.Printf("Error loading schedule for week %d: %v\n", request.Week, err)
+		return h.Response{
+			Lineup:     []h.Roster{},
+			Improvement: 0,
+			Timestamp:  "",
+			Week:       request.Week,
+			Threshold:  request.Threshold,
+		}
+	}
+
+	setup_state := h.InitSetupState(&schedule, request.RosterData, request.Threshold)
+
+	// TODO: Implement lineup generation logic using weekSchedule
+	// For now, return an empty response
+	return h.Response{
+		Lineup:     []h.Roster{},
+		Improvement: 0,
+		Timestamp:  "",
+		Week:       request.Week,
+		Threshold:  request.Threshold,
+	}
 }

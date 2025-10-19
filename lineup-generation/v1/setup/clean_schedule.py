@@ -64,8 +64,12 @@ for day in game_dates:
 	days_since = (game_date - week_start_date).days
 	days_since = 0 if days_since == 7 or days_since == 14 else days_since
 	for game in day["games"]:
-		games_in_week[game["homeTeam"]["teamTricode"]][int(days_since)] = True
-		games_in_week[game["awayTeam"]["teamTricode"]][int(days_since)] = True
+		if game["homeTeam"]["teamTricode"] not in games_in_week:
+			games_in_week[game["homeTeam"]["teamTricode"]] = []
+		if game["awayTeam"]["teamTricode"] not in games_in_week:
+			games_in_week[game["awayTeam"]["teamTricode"]] = []
+		games_in_week[game["homeTeam"]["teamTricode"]].append(int(days_since))
+		games_in_week[game["awayTeam"]["teamTricode"]].append(int(days_since))
 # Handle leftover games (ie. last week)
 schedule[cur_week]["games"] = games_in_week
 
