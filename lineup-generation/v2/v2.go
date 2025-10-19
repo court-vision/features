@@ -91,13 +91,13 @@ func OptimizeStreaming(req u.ReqBody) u.Response {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			ev1.Evolve(bt)
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			ev2.Evolve(bt)
 		}
 	}()
@@ -109,7 +109,7 @@ func OptimizeStreaming(req u.ReqBody) u.Response {
 	fmt.Println("Combined population size: ", ev1.NumChromosomes)
 	
 	// Evolve the combined population
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		ev1.Evolve(bt)
 	}
 
