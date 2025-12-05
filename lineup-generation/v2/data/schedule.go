@@ -55,17 +55,18 @@ func LoadSchedule(path string) {
 }
 
 // Function to get the schedule for a specific week
-func (s *SeasonSchedule) GetWeekSchedule(week string) WeekSchedule {
-	return s.Schedule[week]
+func (s *SeasonSchedule) GetWeekSchedule(week int) WeekSchedule {
+	return s.Schedule[strconv.Itoa(week)]
 }
 
 // Function to get the game span for a specific week
-func (s *SeasonSchedule) GetGameSpan(week string) int {
-	return s.Schedule[week].GameSpan
+func (s *SeasonSchedule) GetGameSpan(week int) int {
+	return s.Schedule[strconv.Itoa(week)].GameSpan
 }
 
-func (s *SeasonSchedule) IsPlaying(week string, day int, team string) bool {
-	if _, ok := s.Schedule[week].TeamSchedules[team][strconv.Itoa(day)]; ok {
+func (s *SeasonSchedule) IsPlaying(week int, day int, team string) bool {
+	weekStr := strconv.Itoa(week)
+	if _, ok := s.Schedule[weekStr].TeamSchedules[team][strconv.Itoa(day)]; ok {
 		return true
 	} else {
 		return false

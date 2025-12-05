@@ -1,39 +1,61 @@
 package helpers
 
 import (
+	"fmt"
 	"sort"
 )
 
 
-type SetupState struct {
-	roster []Player
+type SetupStateMetadata struct {
+	roster             []Player
 	streamable_players []Player
-	optimal_slotting map[int]map[string]Player
-	unused_positions map[int]map[string]bool
-	score int
+	optimal_slotting   map[int]map[string]Player
+	unused_positions   map[int]map[string]bool
 }
 
-func InitSetupState(schedule *WeekSchedule, roster []Player, threshold float64) *SetupState {
+func (ssm *SetupStateMetadata) Print() {
+	position_order := []string{"PG", "SG", "SF", "PF", "G", "F", "C", "UT1", "UT2", "UT3", "BE1", "BE2", "BE3"}
 
-	ss := &SetupState{}
-	ss.roster = roster
-	ss.streamable_players = make([]Player, 0)
-	ss.optimal_slotting = make(map[int]map[string]Player)
-	ss.unused_positions = make(map[int]map[string]bool)
-	ss.score = 0
+	for i := range len(ssm.optimal_slotting) {
+		lineup := ssm.optimal_slotting[i]
+		fmt.Println("Day:", i)
+		fmt.Println(len(lineup))
+		fmt.Println(len(ssm.unused_positions[i]))
+		for _, position := range position_order {
+			if player, ok := lineup[position]; ok {
+				fmt.Println(position, player.Name, player.AvgPoints)
+			} else {
+				if _, ok := ssm.unused_positions[i][position]; ok {
+					fmt.Println(position, "Unused")
+				} else {
+					fmt.Println(position, "--------")
+				}
+			}
+		}
+		fmt.Println()
+	}
+}
 
-	ss.OptimizeSlotting(schedule, threshold)
-	
-	return ss
+func InitSetupState(schedule *WeekSchedule, roster []Player, free_agents []Player, threshold float64) *SetupStateMetadata {
+
+	ssm := &SetupStateMetadata{
+		roster: roster,
+		streamable_players: make([]Player, 0),
+		optimal_slotting: make(map[int]map[string]Player),
+		unused_positions: make(map[int]map[string]bool),
+	}
+	ssm.OptimizeSlotting(schedule, threshold)
+
+	return ssm
 }
 
 // Finds available slots and players to experiment with on a roster when considering undroppable players and restrictive positions
-func (ss *SetupState) OptimizeSlotting(schedule *WeekSchedule, threshold float64) {
+func (ssm *SetupStateMetadata) OptimizeSlotting(schedule *WeekSchedule, threshold float64) {
 
-	// Convert RosterMap to slices and abstract out IR spot. For the first day, pass all players to get_available_slots
+	// Convert RosterMap to slices and abstract out IR spot. For the first day, passm all players to get_available_slots
 	var streamable_players []Player
 	var non_streamable_players []Player
-	for _, player := range ss.roster {
+	for _, player := range ssm.roster {
 
 		if player.Injured {
 			continue
@@ -55,18 +77,19 @@ func (ss *SetupState) OptimizeSlotting(schedule *WeekSchedule, threshold float64
 
 	// Fill return table and put extra IR players on bench
 	for i := 0; i < schedule.GetGameSpan(); i++ {
-		return_table[i] = ss.GetAvailableSlots(schedule, non_streamable_players, i)
+		return_table[i] = ssm.GetAvailableSlots(schedule, non_streamable_players, i)
 	}
 
 	// Sort the streamable players by average points
 	sort.Slice(streamable_players, func(i, j int) bool {
 		return streamable_players[i].AvgPoints > streamable_players[j].AvgPoints
 	})
-	ss.streamable_players = streamable_players
-	ss.optimal_slotting = return_table
+	ssm.streamable_players = streamable_players
+	ssm.optimal_slotting = return_table
+	ssm.FindUnusedPositions()
 }
 
-// Struct for keeping track of state across recursive function calls to allow for early exit
+// Struct for keeping track of state acrossm recursive function calls to allow for early exit
 type FitPlayersContext struct {
 	BestLineup map[string]Player
 	TopScore   int
@@ -75,7 +98,7 @@ type FitPlayersContext struct {
 }
 
 // Function to get available slots for a given day
-func (ss *SetupState) GetAvailableSlots(schedule *WeekSchedule, players []Player, day int) map[string]Player {
+func (ssm *SetupStateMetadata) GetAvailableSlots(schedule *WeekSchedule, players []Player, day int) map[string]Player {
 
 	// Priority order of most restrictive positions to funnel streamers into flexible positions
 	position_order := []string{"PG", "SG", "SF", "PF", "G", "F", "C", "UT1", "UT2", "UT3", "BE1", "BE2", "BE3"}
@@ -97,28 +120,24 @@ func (ss *SetupState) GetAvailableSlots(schedule *WeekSchedule, players []Player
 			return len(playing[i].ValidPositions) < len(playing[j].ValidPositions)
 		})
 
-		// Create struct to keep track of state across recursive function calls
+		// Create struct to keep track of state acrossm recursive function calls
 		p_context := &FitPlayersContext{
 			BestLineup: make(map[string]Player), 
 			TopScore: 0,
-			MaxScore: ss.CalculateMaxScore(playing),
+			MaxScore: ssm.CalculateMaxScore(playing),
 			EarlyExit: false,
 		}
 	
 		// Recursive function call
-		ss.FitPlayers(playing, make(map[string]Player), position_order, p_context, 0)
+		ssm.FitPlayers(playing, make(map[string]Player), position_order, p_context, 0)
 	
 		// Create response map and fill with best lineup or empty strings for unused positions except for bench spots
 		response := make(map[string]Player)
-		filter := map[string]bool{"BE1": true, "BE2": true, "BE3": true}
 		for _, pos := range position_order {
 
 			if value, ok := p_context.BestLineup[pos]; ok {
 				response[pos] = value
 				continue
-			}
-			if _, ok := filter[pos]; !ok {
-				response[pos] = Player{}
 			}
 		}
 
@@ -130,7 +149,7 @@ func (ss *SetupState) GetAvailableSlots(schedule *WeekSchedule, players []Player
 }
 
 // Recursive backtracking function to find most restrictive positions for players
-func (ss *SetupState) FitPlayers(players []Player, cur_lineup map[string]Player, position_order []string, ctx *FitPlayersContext, index int) {
+func (ssm *SetupStateMetadata) FitPlayers(players []Player, cur_lineup map[string]Player, position_order []string, ctx *FitPlayersContext, index int) {
 
 	// If we have found a lineup that has the max score, we can send returns to all other recursive calls
 	if ctx.EarlyExit {
@@ -139,7 +158,7 @@ func (ss *SetupState) FitPlayers(players []Player, cur_lineup map[string]Player,
 	
 	// If all players have been given positions, check if the current lineup is better than the best lineup
 	if len(players) == 0 {
-		score := ss.ScoreRoster(cur_lineup)
+		score := ssm.ScoreRoster(cur_lineup)
 		// fmt.Println("Score:", score, "Max score:", ctx.MaxScore)
 		if score > ctx.TopScore {
 			ctx.TopScore = score
@@ -155,6 +174,9 @@ func (ss *SetupState) FitPlayers(players []Player, cur_lineup map[string]Player,
 	}
 
 	// If we have not gone through all players, try to fit the rest of the players in the lineup
+	if index >= len(position_order) {
+		return // No more positions to try
+	}
 	position := position_order[index]
 	found_player := false
 	for _, player := range players {
@@ -170,7 +192,7 @@ func (ss *SetupState) FitPlayers(players []Player, cur_lineup map[string]Player,
 				}
 			}
 
-			ss.FitPlayers(remaining_players, cur_lineup, position_order, ctx, index + 1) // Recurse
+			ssm.FitPlayers(remaining_players, cur_lineup, position_order, ctx, index + 1) // Recurse
 
 			delete(cur_lineup, position) // Backtrack
 		}
@@ -178,12 +200,12 @@ func (ss *SetupState) FitPlayers(players []Player, cur_lineup map[string]Player,
 
 	// If we did not find a player for the position, advance to the next position
 	if !found_player {
-		ss.FitPlayers(players, cur_lineup, position_order, ctx, index + 1) // Recurse
+		ssm.FitPlayers(players, cur_lineup, position_order, ctx, index + 1) // Recurse
 	}
 }
 
-// Function to score a roster based on restricitveness of positions
-func (ss *SetupState) ScoreRoster(roster map[string]Player) int {
+// Function to score a roster based on restricitvenessm of positions
+func (ssm *SetupStateMetadata) ScoreRoster(roster map[string]Player) int {
 
 	// Scoring system - hardcoded for performance
 	score_map := map[string]int{
@@ -203,8 +225,8 @@ func (ss *SetupState) ScoreRoster(roster map[string]Player) int {
 	return score
 }
 
-// Function to calculate the max restrictiveness score for a given set of players
-func (ss *SetupState) CalculateMaxScore(players []Player) int {
+// Function to calculate the max restrictivenessm score for a given set of players
+func (ssm *SetupStateMetadata) CalculateMaxScore(players []Player) int {
 
 	size := len(players)
 
@@ -224,41 +246,42 @@ func (ss *SetupState) CalculateMaxScore(players []Player) int {
 }
 
 // Function to get the unused positions from the optimal slotting for good players playing for the week
-func (ss *SetupState) FindUnusedPositions() {
+func (ssm *SetupStateMetadata) FindUnusedPositions() {
 
-	// Order that the slice should be in
-	order := []string{"PG", "SG", "SF", "PF", "C", "G", "F", "UT1", "UT2", "UT3"}
+	positions := []string{"PG", "SG", "SF", "PF", "C", "G", "F", "UT1", "UT2", "UT3"}
 
 	// Create map to keep track of unused positions
 	unused_positions := make(map[int]map[string]bool)
 
 	// Loop through each optimal slotting and add unused positions to map
-	for day, lineup := range ss.optimal_slotting {
-
-		// Initialize map for day if it doesn't exist
+	for day, lineup := range ssm.optimal_slotting {
 		if unused_positions[day] == nil {
 			unused_positions[day] = make(map[string]bool)
 		}
-		
-		for _, pos := range order {
-			
+		for _, pos := range positions {
 			// If the position is empty, add it to the unused positions
-			if player := lineup[pos]; player.Name == "" {
+			if _, ok := lineup[pos]; !ok {
 				unused_positions[day][pos] = true
 			}
 		}
 	}
 	
-	ss.unused_positions = unused_positions
+	ssm.unused_positions = unused_positions
 }
 
-// Function to calculate the score of the optimal players for the week
-func (ss *SetupState) CalculateOptimalScore() {
-	total_score := 0.0
-	for _, lineup := range ss.optimal_slotting {
-		for _, player := range lineup {
-			total_score += player.AvgPoints
-		}
-	}
-	ss.score = int(total_score)
+// Getter methods for testing
+func (ssm *SetupStateMetadata) GetRoster() []Player {
+	return ssm.roster
+}
+
+func (ssm *SetupStateMetadata) GetStreamablePlayers() []Player {
+	return ssm.streamable_players
+}
+
+func (ssm *SetupStateMetadata) GetOptimalSlotting() map[int]map[string]Player {
+	return ssm.optimal_slotting
+}
+
+func (ssm *SetupStateMetadata) GetUnusedPositions() map[int]map[string]bool {
+	return ssm.unused_positions
 }

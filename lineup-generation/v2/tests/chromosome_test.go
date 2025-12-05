@@ -13,7 +13,7 @@ import (
 func TestInitChromosome(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
 
-	bt := team.InitBaseTeamMock("1", 32.0)
+	bt := team.InitBaseTeamMock(1, 32.0)
 
 	c := p.InitChromosome(bt)
 
@@ -26,7 +26,7 @@ func TestInitChromosome(t *testing.T) {
 func TestChromosomeInsertStreamablePlayers(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
 
-	bt := team.InitBaseTeamMock("1", 32.0)
+	bt := team.InitBaseTeamMock(1, 32.0)
 
 	c := p.InitChromosome(bt)
 
@@ -107,7 +107,7 @@ func TestPopulateChromosome(t *testing.T) {
 	max_aquisitions := 0
 	for i := 0; i < 100; i++ {
 			
-		bt := team.InitBaseTeamMock("2", 34.0)
+		bt := team.InitBaseTeamMock(2, 34.0)
 		seed := time.Now().UnixNano() + int64(1)
 		rng := rand.New(rand.NewSource(seed))
 
@@ -203,7 +203,7 @@ func TestPopulateChromosome(t *testing.T) {
 func TestChromosomeSlim(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/stopz/v2/static/schedule.json")
 
-	bt := team.InitBaseTeamMock("2", 32.0)
+	bt := team.InitBaseTeamMock(2, 32.0)
 	seed := time.Now().UnixNano()
 	rng := rand.New(rand.NewSource(seed))
 

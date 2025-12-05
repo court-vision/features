@@ -7,19 +7,20 @@ import (
 )
 
 type BaseTeam struct {
-	RosterMap		  		map[string]d.Player
-	FreeAgents 		  	[]d.Player
+	RosterMap         map[string]d.Player
+	FreeAgents        []d.Player
 	OptimalSlotting   map[int]map[string]d.Player
 	UnusedPositions   map[int]map[string]bool
 	StreamablePlayers []d.Player
-	Score 			  		int
-	Week 			  			string
+	Score             int
+	Week              int
 }
 
-func InitBaseTeam(league_id int, espn_s2 string, swid string, team_name string, year int, fa_count int, week string, threshold float64) *BaseTeam {
+func InitBaseTeam(rosterData []d.Player, freeAgentData []d.Player, week int, threshold float64) *BaseTeam {
 
 	bt := &BaseTeam{}
-	bt.RosterMap, bt.FreeAgents = d.FetchData(league_id, espn_s2, swid, team_name, year, fa_count)
+	bt.RosterMap = d.PlayersToMap(rosterData)
+	bt.FreeAgents = freeAgentData
 	bt.OptimizeSlotting(week, threshold)
 	bt.FindUnusedPositions()
 	bt.CalculateOptimalScore()
@@ -28,11 +29,11 @@ func InitBaseTeam(league_id int, espn_s2 string, swid string, team_name string, 
 	return bt
 }
 
-func InitBaseTeamMock(week string, threshold float64) *BaseTeam {
+func InitBaseTeamMock(week int, threshold float64) *BaseTeam {
 
 	bt := &BaseTeam{}
-	bt.RosterMap = l.LoadRosterMap("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/resources/mock_roster.json")
-	bt.FreeAgents = l.LoadFreeAgents("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
+	bt.RosterMap = l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
+	bt.FreeAgents = l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt.OptimizeSlotting(week, threshold)
 	bt.FindUnusedPositions()
 	bt.CalculateOptimalScore()
@@ -43,7 +44,7 @@ func InitBaseTeamMock(week string, threshold float64) *BaseTeam {
 
 
 // Finds available slots and players to experiment with on a roster when considering undroppable players and restrictive positions
-func (t *BaseTeam) OptimizeSlotting(week string, threshold float64) {
+func (t *BaseTeam) OptimizeSlotting(week int, threshold float64) {
 
 	// Convert RosterMap to slices and abstract out IR spot. For the first day, pass all players to get_available_slots
 	var streamable_players []d.Player
@@ -69,7 +70,7 @@ func (t *BaseTeam) OptimizeSlotting(week string, threshold float64) {
 	return_table := make(map[int]map[string]d.Player)
 
 	// Fill return table and put extra IR players on bench
-	for i := 0; i <= d.ScheduleMap.GetGameSpan(week); i++ {
+	for i := range d.ScheduleMap.GetGameSpan(week) {
 		return_table[i] = t.GetAvailableSlots(sorted_good_players, i, week)
 	}
 
@@ -90,7 +91,7 @@ type FitPlayersContext struct {
 }
 
 // Function to get available slots for a given day
-func (t *BaseTeam) GetAvailableSlots(players []d.Player, day int, week string) map[string]d.Player {
+func (t *BaseTeam) GetAvailableSlots(players []d.Player, day int, week int) map[string]d.Player {
 
 	// Priority order of most restrictive positions to funnel streamers into flexible positions
 	position_order := []string{"PG", "SG", "SF", "PF", "G", "F", "C", "UT1", "UT2", "UT3", "BE1", "BE2", "BE3"} // For players playing

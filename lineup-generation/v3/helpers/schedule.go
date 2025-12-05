@@ -57,6 +57,10 @@ func (w *WeekSchedule) GetGameSpan() int {
 	return w.GameSpan
 }
 
+func (w *WeekSchedule) GetTeamSchedule(team string) []int {
+	return w.TeamSchedules[team]
+}
+
 func (w *WeekSchedule) IsPlaying(day int, team string) bool {
 	if game_list, ok := w.TeamSchedules[team]; ok && slices.Contains(game_list, day) {
 		return true

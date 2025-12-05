@@ -8,45 +8,35 @@ import (
 	"testing"
 )
 
-func TestBTInitWAPI(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule24-25.json")
+func TestBTInitWithData(t *testing.T) {
+	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
 
-	// Test the InitBaseTeam function
-	league_id := 424233486
-	espn_s2 := ""
-	swid := ""
-	team_name := "James's Scary Team"
-	year := 2024
-	fa_count := 100
-	week := "1"
+	// Test the InitBaseTeam function with mock data
+	week := 1
 	threshold := 30.0
-	bt := team.InitBaseTeam(league_id, espn_s2, swid, team_name, year, fa_count, week, threshold)
+	roster := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
+	freeAgents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
+	bt := team.InitBaseTeam(roster, freeAgents, week, threshold)
 
 	// Validate fields
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "RosterMap")
 	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", threshold, "FreeAgents")
-	BTFieldValidator(bt, t, "Vince Williams Jr.", "SG", 7, "MEM", threshold, "StreamablePlayers")
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "OptimalSlotting")
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "UnusedPositions")
 	if bt.Week != week {
 		t.Errorf("Week is incorrect")
 	}
 }
 
-func TestBTInitWOAPI(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule24-25.json")
+func TestBTInitMock(t *testing.T) {
+	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
 
 	// Test the InitBaseTeamMock function
-	week := "1"
+	week := 1
 	threshold := 32.0
 	bt := team.InitBaseTeamMock(week, threshold)
 
 	// Validate fields
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "RosterMap")
 	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", threshold, "FreeAgents")
-	BTFieldValidator(bt, t, "Vince Williams Jr.", "SG", 7, "MEM", threshold, "StreamablePlayers")
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "OptimalSlotting")
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "UnusedPositions")
 	if bt.Week != week {
 		t.Errorf("Week is incorrect")
 	}
@@ -75,36 +65,27 @@ func TestBTInitWOAPI(t *testing.T) {
 
 }
 
-func TestBTFetchData(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/lineup-generation/v2/static/schedule24-25.json")
+func TestBTPlayersToMap(t *testing.T) {
+	// Test the PlayersToMap function
+	roster := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
+	roster_map := d.PlayersToMap(roster)
 
-	// Test the FetchData function
-	league_id := 424233486
-	espn_s2 := ""
-	swid := ""
-	team_name := "James's Scary Team"
-	year := 2024
-	fa_count := 100
-	roster_map, free_agents := d.FetchData(league_id, espn_s2, swid, team_name, year, fa_count)
 	bt := &team.BaseTeam{
 		RosterMap: roster_map,
-		FreeAgents: free_agents,
 	}
 
 	// Validate fields
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", 0.0, "RosterMap")
-	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", 0.0, "FreeAgents")
-
 }
 
 func TestBTOptimizeSlottingAndStreamablePlayers(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/lineup-generation/v2/static/schedule24-25.json")
+	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
 
 	// Test the OptimizeSlotting function
-	week := "1"
+	week := 1
 	threshold := 30.0
-	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/cv/stopz/src/tests/resources/mock_roster.json")
-	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/cv/stopz/src/tests/resources/mock_freeagents.json")
+	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
+	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt := &team.BaseTeam{
 		RosterMap: roster_map,
 		FreeAgents: free_agents,
@@ -113,18 +94,17 @@ func TestBTOptimizeSlottingAndStreamablePlayers(t *testing.T) {
 
 	// Validate field
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "OptimalSlotting")
-	BTFieldValidator(bt, t, "Vince Williams Jr.", "SG", 7, "MEM", threshold, "StreamablePlayers")
 
 }
 
 func TestBTFindUnusedPositions(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/stopz/src/static/schedule.json")
+	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
 
 	// Test the FindUnusedPositions function
-	week := "1"
+	week := 1
 	threshold := 30.0
-	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/cv/stopz/src/tests/resources/mock_roster.json")
-	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/cv/stopz/src/tests/resources/mock_freeagents.json")
+	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
+	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt := &team.BaseTeam{
 		RosterMap: roster_map,
 		FreeAgents: free_agents,

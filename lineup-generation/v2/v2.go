@@ -1,16 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"sync"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"sync"
+	"time"
 
-	t "v2/team"
 	d "v2/data"
-	u "v2/utils"
 	p "v2/population"
+	t "v2/team"
+	u "v2/utils"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 		}
 
 		// Print the decoded request for debugging purposes
-		fmt.Printf("Received request: %+v\n", request)
+		fmt.Printf("Received request: Week %d, Threshold %f\n", request.Week, request.Threshold)
 
 		// Check cache to see if the request has already been made
 
@@ -66,21 +66,14 @@ func main() {
 
 func OptimizeStreaming(req u.ReqBody) u.Response {
 	start := time.Now()
-	d.InitSchedule("./static/schedule24-25.json")
+	d.InitSchedule("./static/schedule25-26.json")
 
-	// League information
-	league_id := req.LeagueId
-	espn_s2 := req.EspnS2
-	swid := req.Swid
-	team_name := req.TeamName
-	year := req.Year
+	// Extract request data
 	week := req.Week
-
-	fa_count := 100
 	threshold := req.Threshold
 
-	// Initialize the BaseTeam object
-	bt := t.InitBaseTeam(league_id, espn_s2, swid, team_name, year, fa_count, week, threshold)
+	// Initialize the BaseTeam object with player data from the request
+	bt := t.InitBaseTeam(req.RosterData, req.FreeAgentData, week, threshold)
 
 	// Create new populations
 	ev1 := p.InitPopulation(bt, 20)

@@ -11,7 +11,7 @@ import (
 func TestGeneInit(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/stopz/src/static/schedule.json")
 
-	gene := p.InitGene(team.InitBaseTeamMock("1", 32.0), 0)
+	gene := p.InitGene(team.InitBaseTeamMock(1, 32.0), 0)
 	if gene.Day != 0 {
 		t.Errorf("Gene day is incorrect")
 	}
@@ -21,7 +21,7 @@ func TestGeneInsertStreamablePlayers(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/stopz/src/static/schedule.json")
 
 	// Test the InitGene function
-	bt := team.InitBaseTeamMock("1", 32.0)
+	bt := team.InitBaseTeamMock(1, 32.0)
 	day := 4
 	gene := p.InitGene(bt, day)
 	gene.InsertStreamablePlayers(bt)
@@ -65,7 +65,7 @@ func TestGeneSlotPlayerDropBench(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
 
 	// Test the InitGene function
-	bt := team.InitBaseTeamMock("1", 34.0)
+	bt := team.InitBaseTeamMock(1, 34.0)
 	day := 0
 	gene := p.InitGene(bt, day)
 	gene.InsertStreamablePlayers(bt)
@@ -100,7 +100,7 @@ func TestGeneSlotPlayerDropWorst(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
 
 	// Test the InitGene function
-	bt := team.InitBaseTeamMock("1", 32.0)
+	bt := team.InitBaseTeamMock(1, 32.0)
 	day := 4
 	gene := p.InitGene(bt, day)
 	gene.InsertStreamablePlayers(bt)

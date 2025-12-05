@@ -12,20 +12,20 @@ import (
 
 // Struct for chromosome for genetic algorithm
 type Chromosome struct {
-	Genes 	     	  	[]*Gene
-	FitnessScore	  	int
+	Genes             []*Gene
+	FitnessScore      int
 	TotalAcquisitions int
-	CumProbTracker 	  float64
+	CumProbTracker    float64
 	DroppedPlayers    map[string]d.DroppedPlayer
-	CurStreamers 	  	[]d.Player
-	Week			  			string
+	CurStreamers      []d.Player
+	Week              int
 }
 
 // Function to create a new chromosome
 func InitChromosome(bt *t.BaseTeam) *Chromosome {
 	
 	// Create a new chromosome
-	chromosome := &Chromosome{Genes: make([]*Gene, d.ScheduleMap.Schedule[bt.Week].GameSpan + 1), 
+	chromosome := &Chromosome{Genes: make([]*Gene, d.ScheduleMap.GetGameSpan(bt.Week)), 
 		FitnessScore: 0, 
 		TotalAcquisitions: 0, 
 		CumProbTracker: 0.0, 
@@ -38,7 +38,7 @@ func InitChromosome(bt *t.BaseTeam) *Chromosome {
 	copy(chromosome.CurStreamers, bt.StreamablePlayers)
 
 	// Create a gene for each day in the week
-	for i := 0; i <= d.ScheduleMap.Schedule[bt.Week].GameSpan; i++ {
+	for i := range d.ScheduleMap.GetGameSpan(bt.Week) {
 		gene := InitGene(bt, i)
 		chromosome.Genes[i] = gene
 	}
@@ -56,12 +56,7 @@ func (c *Chromosome) Populate(bt *t.BaseTeam, rng *rand.Rand) {
 
 	// Insert random free agents into the genes
 	for day, gene := range c.Genes {
-		acq_count := (rng.Intn(5) / 2) + rng.Intn(2)
-
-		// Check if there are enough available slots to make acquisitions
-		if len(bt.UnusedPositions[day]) < acq_count {
-			acq_count = len(bt.UnusedPositions[day])
-		}
+		acq_count := min(len(bt.UnusedPositions[day]), (rng.Intn(5) / 2) + rng.Intn(2))
 
 		// On the first day, make sure you can't drop initial streamers who are playing
 		if non_playing_streamers_count := gene.Bench.GetLength(); day == 0 && acq_count > non_playing_streamers_count {
@@ -86,7 +81,7 @@ func (c *Chromosome) Populate(bt *t.BaseTeam, rng *rand.Rand) {
 		}
 
 		// Make acquisitions
-		for i := 0; i < acq_count; i++ {
+		for range acq_count {
 			free_agent := gene.FindRandomFreeAgent(bt, c, rng, d.Player{}); if free_agent.Name == "" {
 				break
 			}

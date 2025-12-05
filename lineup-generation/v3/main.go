@@ -70,7 +70,7 @@ func GenerateLineup(request h.Request) h.Response {
 		}
 	}
 
-	setup_state := h.InitSetupState(&schedule, request.RosterData, request.Threshold)
+	setup_state := h.InitSetupState(&schedule, request.RosterData, request.FreeAgentData, request.Threshold)
 
 	// TODO: Implement lineup generation logic using weekSchedule
 	// For now, return an empty response
