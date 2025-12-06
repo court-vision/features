@@ -16,7 +16,7 @@ data = load_json_file(json_file_path)
 
 schedule = {}
 
-weeks = data["leagueSchedule"]["weeks"]
+weeks = data["leagueSchedule"]["weeks"][:21]
 temp = []
 for i, week in enumerate(weeks):
 	week_number = week["weekNumber"]
@@ -32,9 +32,10 @@ for i in range(len(temp)):
 	if i > 17:
 		temp[i] = (temp[i][0] - 1, temp[i][1], temp[i][2], temp[i][3])
 
-# Adjust for error in JSON file
-temp.pop(8)
-temp = temp[:20]
+temp[17] = (temp[17][0] - 1, temp[17][1], temp[17][2], temp[17][3])
+for week in temp:
+	print(week)
+
 
 for week in temp:
 	schedule[week[0]] = {"startDate": week[1], "endDate": week[2], "gameSpan": week[3]}
