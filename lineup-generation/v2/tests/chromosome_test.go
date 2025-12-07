@@ -61,7 +61,7 @@ func TestChromosomeInsertStreamablePlayers(t *testing.T) {
 func TestInsertFreeAgent(t *testing.T) {
 	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
 
-	bt := team.InitBaseTeamMock("1", 32.0)
+	bt := team.InitBaseTeamMock(1, 32.0)
 
 	c := p.InitChromosome(bt)
 

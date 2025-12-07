@@ -18,9 +18,6 @@ COPY --from=builder /app/exec /app/exec
 
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-COPY ./lineup-generation/v2/static/schedule24-25.json /app/static/schedule24-25.json
+COPY ./lineup-generation/v2/static/schedule25-26.json /app/static/schedule25-26.json
 
 CMD ["./exec"]
-
-# Build command: docker build -t stopz-server .
-# Run command: docker run -p 8000:8000 stopz-server
