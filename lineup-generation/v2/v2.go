@@ -108,7 +108,7 @@ func OptimizeStreaming(req u.ReqBody) u.Response {
 
 	ev1.SortByFitness()
 	best_chromosome_index := ev1.NumChromosomes - 1
-	for ev1.Population[best_chromosome_index].TotalAcquisitions > d.ScheduleMap.GetGameSpan(week) + 1 {
+	for ev1.Population[best_chromosome_index].TotalAcquisitions > d.ScheduleMap.GetGameSpan(week) {
 		best_chromosome_index--
 	}
 	best_chromosome := ev1.Population[best_chromosome_index]

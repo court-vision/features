@@ -363,8 +363,8 @@ func (c *Chromosome) ScoreFitness() {
 	fitness_score := 0.0
 	penalty_factor := 1.0
 
-	if c.TotalAcquisitions > d.ScheduleMap.GetGameSpan(c.Week) + 1 {
-		penalty_factor = 1.0 / math.Pow(1.3, float64(c.TotalAcquisitions - (d.ScheduleMap.GetGameSpan(c.Week) + 1)))
+	if c.TotalAcquisitions > d.ScheduleMap.GetGameSpan(c.Week) {
+		penalty_factor = 1.0 / math.Pow(1.3, float64(c.TotalAcquisitions - d.ScheduleMap.GetGameSpan(c.Week)))
 	}
 	for _, gene := range c.Genes {
 		for _, player := range gene.Roster {
