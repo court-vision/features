@@ -64,10 +64,10 @@ func (b *Bench) IsOnBench(collection interface{}) bool {
 
 // Struct for deserializing the request body
 type ReqBody struct {
-	RosterData    []d.Player `json:"roster_data"`
-	FreeAgentData []d.Player `json:"free_agent_data"`
-	Threshold     float64    `json:"threshold"`
-	Week          int        `json:"week"`
+	RosterData     []d.Player `json:"roster_data"`
+	FreeAgentData  []d.Player `json:"free_agent_data"`
+	StreamingSlots int        `json:"streaming_slots"`
+	Week           int        `json:"week"`
 }
 
 // Slimmed version of a player for the response
@@ -87,9 +87,9 @@ type SlimGene struct {
 
 // Struct that defines the return object for the API
 type Response struct {
-	Lineup      []SlimGene
-	Improvement int
-	Timestamp   string
-	Week        int
-	Threshold   float64
+	Lineup         []SlimGene
+	Improvement    int
+	Timestamp      string
+	Week           int
+	StreamingSlots int
 }

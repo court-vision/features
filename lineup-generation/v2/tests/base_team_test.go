@@ -13,14 +13,14 @@ func TestBTInitWithData(t *testing.T) {
 
 	// Test the InitBaseTeam function with mock data
 	week := 1
-	threshold := 30.0
+	streamingSlots := 3
 	roster := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
 	freeAgents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
-	bt := team.InitBaseTeam(roster, freeAgents, week, threshold)
+	bt := team.InitBaseTeam(roster, freeAgents, week, streamingSlots)
 
 	// Validate fields
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "RosterMap")
-	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", threshold, "FreeAgents")
+	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", streamingSlots, "RosterMap")
+	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", streamingSlots, "FreeAgents")
 	if bt.Week != week {
 		t.Errorf("Week is incorrect")
 	}
@@ -31,12 +31,12 @@ func TestBTInitMock(t *testing.T) {
 
 	// Test the InitBaseTeamMock function
 	week := 1
-	threshold := 32.0
-	bt := team.InitBaseTeamMock(week, threshold)
+	streamingSlots := 3
+	bt := team.InitBaseTeamMock(week, streamingSlots)
 
 	// Validate fields
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "RosterMap")
-	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", threshold, "FreeAgents")
+	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", streamingSlots, "RosterMap")
+	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", streamingSlots, "FreeAgents")
 	if bt.Week != week {
 		t.Errorf("Week is incorrect")
 	}
@@ -75,7 +75,7 @@ func TestBTPlayersToMap(t *testing.T) {
 	}
 
 	// Validate fields
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", 0.0, "RosterMap")
+	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", 0, "RosterMap")
 }
 
 func TestBTOptimizeSlottingAndStreamablePlayers(t *testing.T) {
@@ -83,17 +83,17 @@ func TestBTOptimizeSlottingAndStreamablePlayers(t *testing.T) {
 
 	// Test the OptimizeSlotting function
 	week := 1
-	threshold := 30.0
+	streamingSlots := 3
 	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
 	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt := &team.BaseTeam{
 		RosterMap: roster_map,
 		FreeAgents: free_agents,
 	}
-	bt.OptimizeSlotting(week, threshold)
+	bt.OptimizeSlotting(week, streamingSlots)
 
 	// Validate field
-	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", threshold, "OptimalSlotting")
+	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", streamingSlots, "OptimalSlotting")
 
 }
 
@@ -102,18 +102,18 @@ func TestBTFindUnusedPositions(t *testing.T) {
 
 	// Test the FindUnusedPositions function
 	week := 1
-	threshold := 30.0
+	streamingSlots := 3
 	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
 	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt := &team.BaseTeam{
 		RosterMap: roster_map,
 		FreeAgents: free_agents,
 	}
-	bt.OptimizeSlotting(week, threshold)
+	bt.OptimizeSlotting(week, streamingSlots)
 	bt.FindUnusedPositions()
 
 	// Validate field
-	BTFieldValidator(bt, t, "", "", 0, "", threshold, "UnusedPositions")
+	BTFieldValidator(bt, t, "", "", 0, "", streamingSlots, "UnusedPositions")
 
 	// Print unused positions
 	pos_order := []string{"PG", "SG", "SF", "PF", "C", "G", "F", "UT1", "UT2", "UT3"}
@@ -130,7 +130,7 @@ func TestBTFindUnusedPositions(t *testing.T) {
 	}
 }
 
-func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position string, num_positions int, team string, threshold float64, field string) {
+func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position string, num_positions int, team string, streamingSlots int, field string) {
 	found_player := false
 	switch field {
 	case "RosterMap":
@@ -232,10 +232,10 @@ func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position str
 		if len(c) == 0 {
 			t.Errorf(field, "is empty")
 		}
+		if len(c) != streamingSlots {
+			t.Errorf("Expected %d streamable players, got %d", streamingSlots, len(c))
+		}
 		for _, player := range c {
-			if player.GetAvgPoints() > threshold {
-				t.Errorf("Player average points is less than threshold")
-			}
 			if player.GetName() == name {
 				found_player = true
 				if player.GetValidPositions()[0] != position || len(player.GetValidPositions()) != num_positions {

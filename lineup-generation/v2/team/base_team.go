@@ -16,12 +16,12 @@ type BaseTeam struct {
 	Week              int
 }
 
-func InitBaseTeam(rosterData []d.Player, freeAgentData []d.Player, week int, threshold float64) *BaseTeam {
+func InitBaseTeam(rosterData []d.Player, freeAgentData []d.Player, week int, streamingSlots int) *BaseTeam {
 
 	bt := &BaseTeam{}
 	bt.RosterMap = d.PlayersToMap(rosterData)
 	bt.FreeAgents = freeAgentData
-	bt.OptimizeSlotting(week, threshold)
+	bt.OptimizeSlotting(week, streamingSlots)
 	bt.FindUnusedPositions()
 	bt.CalculateOptimalScore()
 	bt.Week = week
@@ -29,12 +29,12 @@ func InitBaseTeam(rosterData []d.Player, freeAgentData []d.Player, week int, thr
 	return bt
 }
 
-func InitBaseTeamMock(week int, threshold float64) *BaseTeam {
+func InitBaseTeamMock(week int, streamingSlots int) *BaseTeam {
 
 	bt := &BaseTeam{}
 	bt.RosterMap = l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
 	bt.FreeAgents = l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
-	bt.OptimizeSlotting(week, threshold)
+	bt.OptimizeSlotting(week, streamingSlots)
 	bt.FindUnusedPositions()
 	bt.CalculateOptimalScore()
 	bt.Week = week
@@ -44,28 +44,31 @@ func InitBaseTeamMock(week int, threshold float64) *BaseTeam {
 
 
 // Finds available slots and players to experiment with on a roster when considering undroppable players and restrictive positions
-func (t *BaseTeam) OptimizeSlotting(week int, threshold float64) {
+func (t *BaseTeam) OptimizeSlotting(week int, streamingSlots int) {
 
-	// Convert RosterMap to slices and abstract out IR spot. For the first day, pass all players to get_available_slots
-	var streamable_players []d.Player
-	var sorted_good_players []d.Player
+	// Convert RosterMap to slices and abstract out IR spot
+	var eligible_players []d.Player
 	for _, player := range t.RosterMap {
-
 		if player.Injured {
 			continue
 		}
-
-		if player.AvgPoints > threshold {
-			sorted_good_players = append(sorted_good_players, player)
-		} else {
-			streamable_players = append(streamable_players, player)
-		}
+		eligible_players = append(eligible_players, player)
 	}
 
-	// Sort good players by average points
-	sort.Slice(sorted_good_players, func(i, j int) bool {
-		return sorted_good_players[i].AvgPoints > sorted_good_players[j].AvgPoints
+	// Sort all eligible players by average points descending
+	sort.Slice(eligible_players, func(i, j int) bool {
+		return eligible_players[i].AvgPoints > eligible_players[j].AvgPoints
 	})
+
+	// Split into good players (keep) and streamable players (bottom N)
+	var sorted_good_players []d.Player
+	var streamable_players []d.Player
+	cutoff := len(eligible_players) - streamingSlots
+	if cutoff < 0 {
+		cutoff = 0
+	}
+	sorted_good_players = eligible_players[:cutoff]
+	streamable_players = eligible_players[cutoff:]
 
 	return_table := make(map[int]map[string]d.Player)
 

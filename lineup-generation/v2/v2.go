@@ -39,7 +39,7 @@ func main() {
 		}
 
 		// Print the decoded request for debugging purposes
-		fmt.Printf("Received request: Week %d, Threshold %f\n", request.Week, request.Threshold)
+		fmt.Printf("Received request: Week %d, StreamingSlots %d\n", request.Week, request.StreamingSlots)
 
 		// Check cache to see if the request has already been made
 
@@ -70,10 +70,10 @@ func OptimizeStreaming(req u.ReqBody) u.Response {
 
 	// Extract request data
 	week := req.Week
-	threshold := req.Threshold
+	streamingSlots := req.StreamingSlots
 
 	// Initialize the BaseTeam object with player data from the request
-	bt := t.InitBaseTeam(req.RosterData, req.FreeAgentData, week, threshold)
+	bt := t.InitBaseTeam(req.RosterData, req.FreeAgentData, week, streamingSlots)
 
 	// Create new populations
 	ev1 := p.InitPopulation(bt, 20)
@@ -131,6 +131,6 @@ func OptimizeStreaming(req u.ReqBody) u.Response {
 	current_time := time.Now()
 	layout := "1/2/2006 3:04PM"
 
-	return u.Response{Lineup: best_chromosome.Slim(), Improvement: best_chromosome.FitnessScore - base_chromosome.FitnessScore, Timestamp: current_time.Format(layout), Week: week, Threshold: threshold}
+	return u.Response{Lineup: best_chromosome.Slim(), Improvement: best_chromosome.FitnessScore - base_chromosome.FitnessScore, Timestamp: current_time.Format(layout), Week: week, StreamingSlots: streamingSlots}
 
 }
