@@ -1,6 +1,6 @@
 # Court Vision — Features Service
 
-Go services for compute-intensive features in the [Court Vision](https://github.com/jameskendrick/cv) fantasy basketball analytics platform. The primary service is **lineup generation**: given a manager's current roster and the available free agent pool, it determines the optimal sequence of daily add/drop moves to maximize projected fantasy points scored over a given week.
+Go services for compute-intensive features in the [Court Vision](https://github.com/court-vision) fantasy basketball analytics platform. The primary service is **lineup generation**: given a manager's current roster and the available free agent pool, it determines the optimal sequence of daily add/drop moves to maximize projected fantasy points scored over a given week.
 
 The service runs an HTTP server on **port 8080**.
 

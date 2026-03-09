@@ -50,21 +50,22 @@ func (l *Lineup) GetBench() []Player {
 
 func (l *Lineup) SlotStreamer(streamer Player) bool {
 
-	// Priority order of most restrictive positions to funnel streamers into flexible positions
-	position_order := []string{"PG", "SG", "SF", "PF", "G", "F", "C", "UT1", "UT2", "UT3", "BE1", "BE2", "BE3"}
+	// // Priority order of most restrictive positions to funnel streamers into flexible positions
+	// position_order := []string{"PG", "SG", "SF", "PF", "G", "F", "C", "UT1", "UT2", "UT3", "BE1", "BE2", "BE3"}
 
-	found_position := false
-	for _, position := range position_order {
-		// If we position is 
-		if player, ok := l.roster[position]; ok && streamer.PlaysPosition(position) {
-			l.roster[position] = streamer
-			found_position = true
-			l.score += streamer.AvgPoints
-			break
-		}
-	}
+	// found_position := false
+	// for _, position := range position_order {
+	// 	// If we position is 
+	// 	if player, ok := l.roster[position]; ok && streamer.PlaysPosition(position) {
+	// 		l.roster[position] = streamer
+	// 		found_position = true
+	// 		l.score += streamer.AvgPoints
+	// 		break
+	// 	}
+	// }
 
-	return found_position
+	// return found_position
+	return false
 }
 
 type State struct {
