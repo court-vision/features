@@ -58,19 +58,19 @@ func main() {
 
 func GenerateLineup(request h.Request) h.Response {
 	// Initialize the schedule for the specific week requested
-	schedule, err := h.LoadWeekSchedule("./static/schedule2025-2026.json", request.Week)
-	if err != nil {
-		fmt.Printf("Error loading schedule for week %d: %v\n", request.Week, err)
-		return h.Response{
-			Lineup:     []h.Roster{},
-			Improvement: 0,
-			Timestamp:  "",
-			Week:       request.Week,
-			Threshold:  request.Threshold,
-		}
-	}
+	// schedule, err := h.LoadWeekSchedule("./static/schedule2025-2026.json", request.Week)
+	// if err != nil {
+	// 	fmt.Printf("Error loading schedule for week %d: %v\n", request.Week, err)
+	// 	return h.Response{
+	// 		Lineup:     []h.Roster{},
+	// 		Improvement: 0,
+	// 		Timestamp:  "",
+	// 		Week:       request.Week,
+	// 		Threshold:  request.Threshold,
+	// 	}
+	// }
 
-	setup_state := h.InitSetupState(&schedule, request.RosterData, request.FreeAgentData, request.Threshold)
+	// setup_state := h.InitSetupState(&schedule, request.RosterData, request.FreeAgentData, request.Threshold)
 
 	// TODO: Implement lineup generation logic using weekSchedule
 	// For now, return an empty response
