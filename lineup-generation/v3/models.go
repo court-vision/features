@@ -11,5 +11,7 @@ type Period struct {
 
 type Item struct {
 	Name string
-	Schedule []map[string]bool
+	Schedule [][]string // [period][position]
+	Positions map[string]bool
+	Value float64
 }
