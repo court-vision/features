@@ -4,6 +4,7 @@ import (
 	"sort"
 	d "v2/data"
 	l "v2/resources"
+	tu "v2/testutil"
 )
 
 type BaseTeam struct {
@@ -32,8 +33,8 @@ func InitBaseTeam(rosterData []d.Player, freeAgentData []d.Player, week int, str
 func InitBaseTeamMock(week int, streamingSlots int) *BaseTeam {
 
 	bt := &BaseTeam{}
-	bt.RosterMap = l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
-	bt.FreeAgents = l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
+	bt.RosterMap = l.LoadRosterMap(tu.RepoPath("resources", "mock_roster.json"))
+	bt.FreeAgents = l.LoadFreeAgents(tu.RepoPath("resources", "mock_freeagents.json"))
 	bt.OptimizeSlotting(week, streamingSlots)
 	bt.FindUnusedPositions()
 	bt.CalculateOptimalScore()

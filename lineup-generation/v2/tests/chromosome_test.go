@@ -3,30 +3,43 @@ package tests
 import (
 	"fmt"
 	"math/rand"
+	"testing"
+	"time"
+
 	d "v2/data"
 	p "v2/population"
 	"v2/team"
-	"testing"
-	"time"
+	u "v2/utils"
 )
 
 func TestInitChromosome(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
+	loadSchedule(t)
 
-	bt := team.InitBaseTeamMock(1, 32.0)
+	week := 1
+	bt := team.InitBaseTeamMock(week, 2)
 
 	c := p.InitChromosome(bt)
 
-	if len(c.Genes) != 6 {
-		t.Errorf("Incorrect number of genes")
+	if got, want := len(c.Genes), d.ScheduleMap.GetGameSpan(week); got != want {
+		t.Errorf("Incorrect number of genes: %d, want %d", got, want)
 	}
-
+	for i, gene := range c.Genes {
+		if gene == nil || gene.Day != i {
+			t.Errorf("gene %d is %+v", i, gene)
+		}
+	}
+	if c.Week != week {
+		t.Errorf("chromosome week %d, want %d", c.Week, week)
+	}
+	if len(c.CurStreamers) != len(bt.StreamablePlayers) {
+		t.Errorf("%d current streamers, want %d", len(c.CurStreamers), len(bt.StreamablePlayers))
+	}
 }
 
 func TestChromosomeInsertStreamablePlayers(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
+	loadSchedule(t)
 
-	bt := team.InitBaseTeamMock(1, 32.0)
+	bt := team.InitBaseTeamMock(1, 2)
 
 	c := p.InitChromosome(bt)
 
@@ -35,33 +48,34 @@ func TestChromosomeInsertStreamablePlayers(t *testing.T) {
 		gene.InsertStreamablePlayers(bt)
 	}
 
-	// Validate that the streamers were inserted into the right spots
-	if c.Genes[0].Roster["PG"].Name != "Bradley Beal" {
-		t.Errorf("Bradley Beal not in the right spot for day 0")
+	// Validate that the streamers were inserted into the right spots on every day
+	for _, gene := range c.Genes {
+		assertStreamersSlotted(t, bt, gene)
 	}
-	if !c.Genes[1].Bench.IsOnBench("Vince Williams Jr.") {
-		t.Errorf("Vince Williams Jr. not on the bench for day 1")
-	}
-	if c.Genes[2].Roster["PG"].Name != "Bradley Beal" {
-		t.Errorf("Bradley Beal not in the right spot for day 2")
-	}
-	if c.Genes[3].Roster["UT2"].Name != "Vince Williams Jr." {
-		t.Errorf("Vince Williams Jr. not in the right spot for day 3")
-	}
-	if c.Genes[4].Roster["G"].Name != "Bradley Beal" {
-		t.Errorf("Bradley Beal not in the right spot for day 4")
-	}
-	if c.Genes[4].Roster["F"].Name != "Vince Williams Jr." {
-		t.Errorf("Vince Williams Jr. not in the right spot for day 4")
-	}
-
 }
 
-
 func TestInsertFreeAgent(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
+	loadSchedule(t)
 
-	bt := team.InitBaseTeamMock(1, 32.0)
+	week := 1
+
+	// Make the scenario deterministic for any season's schedule: both streamers sit out
+	// day 0, so the free agent (who plays day 0) replaces the worst benched streamer
+	// from day 0 through the end of the week.
+	roster := loadRosterMap(t)
+	idle := teamNotPlayingOn(t, week, 0)
+	for _, name := range []string{"Bradley Beal", "Vince Williams Jr."} {
+		player, ok := roster[name]
+		if !ok {
+			t.Fatalf("%s missing from mock roster", name)
+		}
+		player.Team = idle
+		roster[name] = player
+	}
+	bt := team.InitBaseTeam(rosterToSlice(roster), loadFreeAgents(t), week, 2)
+	if len(bt.StreamablePlayers) != 2 {
+		t.Fatalf("expected 2 streamers, got %d", len(bt.StreamablePlayers))
+	}
 
 	c := p.InitChromosome(bt)
 
@@ -69,45 +83,61 @@ func TestInsertFreeAgent(t *testing.T) {
 	for _, gene := range c.Genes {
 		gene.InsertStreamablePlayers(bt)
 	}
+	if c.Genes[0].Bench.GetLength() != 2 {
+		t.Fatalf("both streamers should be benched on day 0, bench has %d", c.Genes[0].Bench.GetLength())
+	}
+	worst := c.Genes[0].Bench.Players[0]
 
-	// Insert "random" free agent into the chromosome
-	free_agent := d.Player{Name: "Random Free Agent1", AvgPoints: 10.0, Team: "PHX", ValidPositions: []string{"C", "F", "UT1", "UT2", "UT3"}, Injured: false}
-	c.InsertFreeAgent(bt, 0, free_agent)
+	// Insert a free agent who plays on day 0 into the chromosome
+	free_agent := d.Player{Name: "Random Free Agent1", AvgPoints: 10.0, Team: teamPlayingOn(t, week, 0), ValidPositions: []string{"C", "F", "UT1", "UT2", "UT3"}, Injured: false}
+	wantPos := ""
+	for _, pos := range free_agent.ValidPositions {
+		if c.Genes[0].FreePositions[pos] {
+			wantPos = pos
+			break
+		}
+	}
+	if !c.InsertFreeAgent(bt, 0, free_agent) {
+		t.Fatalf("InsertFreeAgent failed")
+	}
 
 	c.Print()
 
-	// Validate that the free agent was inserted into the right spots and that the worst streamer was dropped
-	if c.Genes[0].Roster["C"].Name != "Random Free Agent1" { t.Errorf("Random Free Agent1 not in the right spot for day 0") }
-	if c.Genes[0].FreePositions["C"] { t.Errorf("Free position (C) is incorrect for day 0") }
-	if c.Genes[0].Bench.IsOnBench("Vince Williams Jr.") { t.Errorf("Vince Williams Jr. is on the bench for day 0") }
-	
-	if !c.Genes[1].Bench.IsOnBench(free_agent) { t.Errorf("Random Free Agent1 not on the bench for day 1") }
-	if c.Genes[1].Bench.IsOnBench("Vince Williams Jr.") { t.Errorf("Vince Williams Jr. is on the bench for day 0") }
+	// Validate that the free agent was inserted for the rest of the week and that the worst streamer was dropped
+	for day, gene := range c.Genes {
+		if gene.IsPlayerInGene(worst) {
+			t.Errorf("%s is still in the gene on day %d", worst.Name, day)
+		}
+		if !gene.IsPlayerInGene(free_agent) {
+			t.Errorf("%s is missing from the gene on day %d", free_agent.Name, day)
+		}
+		if d.ScheduleMap.IsPlaying(week, day, free_agent.Team) {
+			if pos := gene.GetPosOfPlayer(free_agent); pos != "BE" && (!free_agent.PlaysPosition(pos) || gene.FreePositions[pos]) {
+				t.Errorf("day %d: %s rostered at %s (free=%v)", day, free_agent.Name, pos, gene.FreePositions[pos])
+			}
+		} else if !gene.Bench.IsOnBench(free_agent) {
+			t.Errorf("day %d: %s is idle and should be benched", day, free_agent.Name)
+		}
+	}
+	if wantPos != "" {
+		if got := c.Genes[0].GetPosOfPlayer(free_agent); got != wantPos {
+			t.Errorf("day 0: %s at %q, want %s", free_agent.Name, got, wantPos)
+		}
+	}
 
-	if c.Genes[2].Roster["C"].Name != "Random Free Agent1" { t.Errorf("Random Free Agent1 not in the right spot for day 2") }
-	if c.Genes[2].FreePositions["C"] { t.Errorf("Free position (C) is incorrect for day 2") }
-	if c.Genes[2].Bench.IsOnBench("Vince Williams Jr.") { t.Errorf("Vince Williams Jr. is on the bench for day 0") }
-
-	if !c.Genes[3].Bench.IsOnBench(free_agent) { t.Errorf("Random Free Agent1 not on the bench for day 3") }
-	if c.Genes[3].Roster["UT2"].Name == "Vince Williams Jr." { t.Errorf("Vince Williams Jr. still in roster for day 3") }
-
-	if c.Genes[4].Roster["F"].Name != "Random Free Agent1" { t.Errorf("Random Free Agent1 not in the right spot for day 4") }
-	if c.Genes[4].FreePositions["F"] { t.Errorf("Free position (F) is incorrect for day 4") }
-	if c.Genes[4].Bench.IsOnBench("Vince Williams Jr.") { t.Errorf("Vince Williams Jr. is on the bench for day 4") }
-
-	if !c.Genes[5].Bench.IsOnBench(free_agent) { t.Errorf("Random Free Agent1 not on the bench for day 5") }
-	if c.Genes[5].Bench.IsOnBench("Vince Williams Jr.") { t.Errorf("Vince Williams Jr. is on the bench for day 5") }
-
+	// The free agent replaces the dropped streamer in the chromosome's current streamers
+	if !u.SliceContainsPlayer(c.CurStreamers, &free_agent) || u.SliceContainsPlayer(c.CurStreamers, &worst) {
+		t.Errorf("current streamers %v should contain %s and not %s", c.CurStreamers, free_agent.Name, worst.Name)
+	}
 }
 
 func TestPopulateChromosome(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/features/lineup-generation/v2/static/schedule.json")
+	loadSchedule(t)
 
-	errors := 0
 	max_aquisitions := 0
 	for i := 0; i < 100; i++ {
-			
-		bt := team.InitBaseTeamMock(2, 34.0)
+
+		bt := team.InitBaseTeamMock(2, 3)
 		seed := time.Now().UnixNano() + int64(1)
 		rng := rand.New(rand.NewSource(seed))
 
@@ -115,78 +145,13 @@ func TestPopulateChromosome(t *testing.T) {
 
 		c.Populate(bt, rng)
 
-		// Make sure NewPlayer count corresponds with gene and total acquisitions
-		total_acquisitions := 0
-		for _, gene := range c.Genes {
-			if len(gene.NewPlayers) != gene.Acquisitions {
-				fmt.Println(gene.NewPlayers, gene.Acquisitions)
-				t.Errorf("Acquisition count does not match new player count")
-			}
-			total_acquisitions += gene.Acquisitions
-		}
-		if total_acquisitions != c.TotalAcquisitions {
-			t.Errorf("Total acquisitions do not match gene acquisitions")
-		}
+		assertChromosomeConsistent(t, bt, c, fmt.Sprintf("populate #%d", i))
 
-		// Make sure NewPlayer count and DropPlayer count are correct
-		for _, gene := range c.Genes {
-			if len(gene.NewPlayers) != len(gene.DroppedPlayers) {
-				t.Errorf("NewPlayer count does not match DropPlayer count")
-			}
-		}
-		
-
-		// Make sure the number of streamers is correct
-		for _, gene := range c.Genes {
-			if gene.GetNumStreamers() != len(bt.StreamablePlayers) {
-				t.Errorf("Streamer count is incorrect")
-			}
-		}
-
-		// Make sure each addition is in the roster
+		// Populate only picks free agents who fit an open slot, so every addition starts
 		for day, gene := range c.Genes {
 			for _, player := range gene.NewPlayers {
 				if !gene.IsPlayerInRoster(player) {
-					errors++
-					fmt.Println("Day:", day)
-					c.Print()
-					t.Errorf("Player not in roster")
-				}
-			}
-		}
-
-		// Make sure the length of the dropped players is the same as the number of acquisitions
-		for _, gene := range c.Genes {
-			if len(gene.DroppedPlayers) != gene.Acquisitions {
-				errors++
-				t.Errorf("Dropped player count does not match acquisitions")
-			}
-		}
-
-		// Make sure Name fields are not empty
-		for _, gene := range c.Genes {
-			for _, player := range gene.NewPlayers {
-				if player.Name == "" {
-					errors++
-					t.Errorf("New player name is empty")
-				}
-			}
-			for _, player := range gene.DroppedPlayers {
-				if player.Name == "" {
-					errors++
-					t.Errorf("Dropped player name is empty")
-				}
-			}
-		}
-
-		// Make sure there are no duplicates in NewPlayers
-		for _, gene := range c.Genes {
-			for i, player := range gene.NewPlayers {
-				for j, other_player := range gene.NewPlayers {
-					if i != j && player.Name == other_player.Name {
-						errors++
-						t.Errorf("Duplicate new player")
-					}
+					t.Errorf("populate #%d day %d: addition %s is not in the roster", i, day, player.Name)
 				}
 			}
 		}
@@ -195,15 +160,15 @@ func TestPopulateChromosome(t *testing.T) {
 			max_aquisitions = c.TotalAcquisitions
 		}
 	}
- 
-	fmt.Println(errors)
+
 	fmt.Println("Max acquisitions:", max_aquisitions)
 }
 
 func TestChromosomeSlim(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/cv/stopz/v2/static/schedule.json")
+	loadSchedule(t)
 
-	bt := team.InitBaseTeamMock(2, 32.0)
+	week := 2
+	bt := team.InitBaseTeamMock(week, 2)
 	seed := time.Now().UnixNano()
 	rng := rand.New(rand.NewSource(seed))
 
@@ -213,6 +178,30 @@ func TestChromosomeSlim(t *testing.T) {
 	c.AddBackNonStreamablePlayers(bt)
 
 	slim_chromosome := c.Slim()
+	if got, want := len(slim_chromosome), d.ScheduleMap.GetGameSpan(week); got != want {
+		t.Fatalf("slim chromosome has %d days, want %d", got, want)
+	}
+	for day, slim := range slim_chromosome {
+		if slim.Day != day {
+			t.Errorf("slim gene %d has Day %d", day, slim.Day)
+		}
+		if len(slim.Additions) != len(c.Genes[day].NewPlayers) || len(slim.Removals) != len(c.Genes[day].DroppedPlayers) {
+			t.Errorf("day %d: slim additions/removals %d/%d, want %d/%d", day, len(slim.Additions), len(slim.Removals), len(c.Genes[day].NewPlayers), len(c.Genes[day].DroppedPlayers))
+		}
+		// Core players are back in their optimal positions
+		for pos, player := range bt.OptimalSlotting[day] {
+			if player.Name == "" {
+				continue
+			}
+			if slim.Roster[pos].Name != player.Name {
+				t.Errorf("day %d: %s should hold %s, got %q", day, pos, player.Name, slim.Roster[pos].Name)
+			}
+		}
+		for pos, player := range slim.Roster {
+			if player.Name == "" {
+				t.Errorf("day %d: empty player at %s", day, pos)
+			}
+		}
+	}
 	fmt.Println(slim_chromosome[0])
 }
-	

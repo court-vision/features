@@ -1,33 +1,39 @@
 package tests
 
 import (
-	"fmt"
-	d "v2/data"
-	l "v2/resources"
-	"v2/team"
 	"testing"
+
+	d "v2/data"
+	"v2/team"
 )
 
 func TestBTInitWithData(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
+	loadSchedule(t)
 
 	// Test the InitBaseTeam function with mock data
 	week := 1
 	streamingSlots := 3
-	roster := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
-	freeAgents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
-	bt := team.InitBaseTeam(roster, freeAgents, week, streamingSlots)
+	bt := team.InitBaseTeam(loadRosterSlice(t), loadFreeAgents(t), week, streamingSlots)
 
 	// Validate fields
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", streamingSlots, "RosterMap")
 	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", streamingSlots, "FreeAgents")
+	BTFieldValidator(bt, t, "", "", 0, "", streamingSlots, "OptimalSlotting")
+	BTFieldValidator(bt, t, "", "", 0, "", streamingSlots, "UnusedPositions")
+	BTFieldValidator(bt, t, "Bradley Beal", "PG", 6, "PHX", streamingSlots, "StreamablePlayers")
 	if bt.Week != week {
 		t.Errorf("Week is incorrect")
+	}
+	if got, want := len(bt.OptimalSlotting), d.ScheduleMap.GetGameSpan(week); got != want {
+		t.Errorf("OptimalSlotting covers %d days, want %d", got, want)
+	}
+	if bt.Score <= 0 {
+		t.Errorf("optimal score should be positive, got %d", bt.Score)
 	}
 }
 
 func TestBTInitMock(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
+	loadSchedule(t)
 
 	// Test the InitBaseTeamMock function
 	week := 1
@@ -37,38 +43,28 @@ func TestBTInitMock(t *testing.T) {
 	// Validate fields
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", streamingSlots, "RosterMap")
 	BTFieldValidator(bt, t, "Naz Reid", "PF", 6, "MIN", streamingSlots, "FreeAgents")
+	BTFieldValidator(bt, t, "", "", 0, "", streamingSlots, "OptimalSlotting")
+	BTFieldValidator(bt, t, "", "", 0, "", streamingSlots, "UnusedPositions")
+	BTFieldValidator(bt, t, "Bradley Beal", "PG", 6, "PHX", streamingSlots, "StreamablePlayers")
 	if bt.Week != week {
 		t.Errorf("Week is incorrect")
 	}
 
-	// Print the optimal slotting and the streamable players
-	fmt.Println("Optimal Slotting")
-	order := []string{"PG", "SG", "SF", "PF", "C", "G", "F", "UT1", "UT2", "UT3"}
-	for i, day := range bt.OptimalSlotting {
-		fmt.Println("Day", i)
-		for _, pos := range order {
-			if player, ok := day[pos]; ok && player.GetName() != "" {
-				fmt.Println(pos, player.GetName())
-			} else {
-				fmt.Println(pos, "Empty")
-			}
-		}
-		fmt.Println()
+	// The mock must match what InitBaseTeam builds from the same fixtures
+	fromData := team.InitBaseTeam(loadRosterSlice(t), loadFreeAgents(t), week, streamingSlots)
+	if fromData.Score != bt.Score || len(fromData.StreamablePlayers) != len(bt.StreamablePlayers) {
+		t.Errorf("mock base team (score %d, %d streamers) differs from data-built one (score %d, %d streamers)",
+			bt.Score, len(bt.StreamablePlayers), fromData.Score, len(fromData.StreamablePlayers))
 	}
-	fmt.Println("Streamable Players")
-	for _, player := range bt.StreamablePlayers {
-		fmt.Println(player.GetName(), player.GetAvgPoints(), player.GetTeam(), player.GetValidPositions())
-		for day := range d.ScheduleMap.GetWeekSchedule(week).TeamSchedules[player.GetTeam()] {
-			fmt.Println("Playing day", day)
-		}
-	}
-
 }
 
 func TestBTPlayersToMap(t *testing.T) {
 	// Test the PlayersToMap function
-	roster := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
+	roster := loadRosterSlice(t)
 	roster_map := d.PlayersToMap(roster)
+	if len(roster_map) != len(roster) {
+		t.Errorf("PlayersToMap produced %d entries from %d players", len(roster_map), len(roster))
+	}
 
 	bt := &team.BaseTeam{
 		RosterMap: roster_map,
@@ -79,66 +75,93 @@ func TestBTPlayersToMap(t *testing.T) {
 }
 
 func TestBTOptimizeSlottingAndStreamablePlayers(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
+	loadSchedule(t)
 
 	// Test the OptimizeSlotting function
 	week := 1
 	streamingSlots := 3
-	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
-	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt := &team.BaseTeam{
-		RosterMap: roster_map,
-		FreeAgents: free_agents,
+		RosterMap:  loadRosterMap(t),
+		FreeAgents: loadFreeAgents(t),
 	}
 	bt.OptimizeSlotting(week, streamingSlots)
 
 	// Validate field
 	BTFieldValidator(bt, t, "Anthony Edwards", "SG", 7, "MIN", streamingSlots, "OptimalSlotting")
+	BTFieldValidator(bt, t, "Bradley Beal", "PG", 6, "PHX", streamingSlots, "StreamablePlayers")
+	if got, want := len(bt.OptimalSlotting), d.ScheduleMap.GetGameSpan(week); got != want {
+		t.Errorf("OptimalSlotting covers %d days, want %d", got, want)
+	}
 
+	// Streamers are the lowest-scoring healthy players; injured players are never slotted or streamed
+	for _, streamer := range bt.StreamablePlayers {
+		if streamer.Injured {
+			t.Errorf("injured player %s is streamable", streamer.Name)
+		}
+		for _, player := range bt.RosterMap {
+			if !player.Injured && player.AvgPoints < streamer.AvgPoints && !containsPlayer(bt.StreamablePlayers, player.Name) {
+				t.Errorf("%s (%.2f) is streamable but lower-scoring %s (%.2f) is not", streamer.Name, streamer.AvgPoints, player.Name, player.AvgPoints)
+			}
+		}
+	}
+	for day, lineup := range bt.OptimalSlotting {
+		for pos, player := range lineup {
+			if player.Injured {
+				t.Errorf("day %d: injured %s slotted at %s", day, player.Name, pos)
+			}
+		}
+	}
 }
 
 func TestBTFindUnusedPositions(t *testing.T) {
-	d.InitSchedule("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/static/schedule25-26.json")
+	loadSchedule(t)
 
 	// Test the FindUnusedPositions function
 	week := 1
 	streamingSlots := 3
-	roster_map := l.LoadRosterMap("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_roster.json")
-	free_agents := l.LoadFreeAgents("/Users/jameskendrick/Code/Projects/cv/features/lineup-generation/v2/resources/mock_freeagents.json")
 	bt := &team.BaseTeam{
-		RosterMap: roster_map,
-		FreeAgents: free_agents,
+		RosterMap:  loadRosterMap(t),
+		FreeAgents: loadFreeAgents(t),
 	}
 	bt.OptimizeSlotting(week, streamingSlots)
 	bt.FindUnusedPositions()
 
 	// Validate field
 	BTFieldValidator(bt, t, "", "", 0, "", streamingSlots, "UnusedPositions")
+	if got, want := len(bt.UnusedPositions), d.ScheduleMap.GetGameSpan(week); got != want {
+		t.Errorf("UnusedPositions covers %d days, want %d", got, want)
+	}
 
-	// Print unused positions
+	// Every starting position is either used by the optimal lineup or reported unused
 	pos_order := []string{"PG", "SG", "SF", "PF", "C", "G", "F", "UT1", "UT2", "UT3"}
-	for i := 0; i < 6; i++ {
-		day := bt.UnusedPositions[i]
-		fmt.Println("Day", i)
+	for day := 0; day < d.ScheduleMap.GetGameSpan(week); day++ {
 		for _, pos := range pos_order {
-			if val, ok := day[pos]; ok && val {
-				fmt.Println(pos, "Unused")
-			} else {
-				fmt.Println(pos, "used by", bt.OptimalSlotting[i][pos].GetName())
+			used := bt.OptimalSlotting[day][pos].Name != ""
+			if used == bt.UnusedPositions[day][pos] {
+				t.Errorf("day %d %s: used=%v but unused=%v", day, pos, used, bt.UnusedPositions[day][pos])
 			}
 		}
 	}
 }
 
+func containsPlayer(players []d.Player, name string) bool {
+	for _, player := range players {
+		if player.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position string, num_positions int, team string, streamingSlots int, field string) {
+	t.Helper()
 	found_player := false
 	switch field {
 	case "RosterMap":
 		// RosterMap
 		c := bt.RosterMap
-		fmt.Println("Testing", field)
 		if len(c) == 0 {
-			t.Errorf(field, "is empty");
+			t.Errorf("%s is empty", field)
 		}
 		for _, player := range c {
 			if player.GetAvgPoints() == 0 {
@@ -157,12 +180,14 @@ func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position str
 				break
 			}
 		}
+		if !found_player {
+			t.Errorf("%s not found in %s", name, field)
+		}
 	case "FreeAgents":
 		// FreeAgents
-		fmt.Println("Testing", field)
 		c := bt.FreeAgents
 		if len(c) == 0 {
-			t.Errorf(field, "is empty")
+			t.Errorf("%s is empty", field)
 		}
 		for _, player := range c {
 			if player.GetName() == name {
@@ -178,44 +203,37 @@ func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position str
 				break
 			}
 		}
+		if !found_player {
+			t.Errorf("%s not found in %s", name, field)
+		}
 	case "OptimalSlotting":
 		// OptimalSlotting
 		c := bt.OptimalSlotting
-		fmt.Println("Testing", field)
-		if len(c) < 5 {
-			t.Errorf(field, "is not filled")
+		if len(c) == 0 {
+			t.Errorf("%s is not filled", field)
 		}
-		flexible_positions := []string{"UT1", "UT2", "UT3", "G", "F"}
-		restrictive_positions := []string{"PG", "SG", "SF", "PF", "C"}
-		restrictive_positions_map := make(map[string]bool)
-		for _, pos := range restrictive_positions {
-			restrictive_positions_map[pos] = true
-		}
+		// Restrictiveness as scored by BaseTeam.ScoreRoster: PG/SG/SF/PF > G/F > C > UT
+		score := map[string]int{"PG": 5, "SG": 5, "SF": 5, "PF": 5, "G": 4, "F": 4, "C": 3, "UT1": 2, "UT2": 2, "UT3": 2}
 
-		// Make sure that players are slotted into the most restrictive positions
-		for _, day := range c {
-			// Make sure players in non-restrictive positions can't be slotted into more restrictive positions
-			for _, pos := range flexible_positions {
-				if player, ok := day[pos]; ok {
-					// If the player is in a non-restrictive position make sure there is a player in their more restrictive ValidPositions
-					for _, valid_pos := range player.GetValidPositions() {
-						if _, ok := restrictive_positions_map[valid_pos]; ok {
-							if player, ok := day[valid_pos]; ok && player.GetName() == "" {
-								t.Errorf("Player is slotted into less restrictive position")
-							}
-						} else {
-							// ValidPositions are ordered in descending order of restrictiveness so next positions will be less restrictive
-							break
-						}
+		// Make sure that players are slotted into the most restrictive positions: an optimal
+		// slotting never leaves a player in a slot when one of his more restrictive valid
+		// slots is empty, because moving him there alone would raise the score
+		for dayIdx, day := range c {
+			for pos, player := range day {
+				if player.GetName() == "" {
+					continue
+				}
+				for _, valid_pos := range player.GetValidPositions() {
+					if score[valid_pos] > score[pos] && day[valid_pos].GetName() == "" {
+						t.Errorf("day %d: %s is slotted at %s while more restrictive %s is empty", dayIdx, player.GetName(), pos, valid_pos)
 					}
 				}
 			}
 		}
 	case "UnusedPositions":
 		c := bt.UnusedPositions
-		fmt.Println("Testing", field)
-		if len(c) < 5 {
-			t.Errorf(field, "is empty")
+		if len(c) == 0 {
+			t.Errorf("%s is empty", field)
 		}
 
 		// Make sure that none of the UnusedPositions are in the OptimalSlotting
@@ -228,9 +246,8 @@ func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position str
 		}
 	case "StreamablePlayers":
 		c := bt.StreamablePlayers
-		fmt.Println("Testing", field)
 		if len(c) == 0 {
-			t.Errorf(field, "is empty")
+			t.Errorf("%s is empty", field)
 		}
 		if len(c) != streamingSlots {
 			t.Errorf("Expected %d streamable players, got %d", streamingSlots, len(c))
@@ -248,6 +265,9 @@ func BTFieldValidator(bt *team.BaseTeam, t *testing.T, name string, position str
 			if found_player {
 				break
 			}
+		}
+		if !found_player {
+			t.Errorf("%s not found in %s", name, field)
 		}
 
 		// Make sure that none of the StreamablePlayers are in the OptimalSlotting

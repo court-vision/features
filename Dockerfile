@@ -18,6 +18,10 @@ COPY --from=builder /app/exec /app/exec
 
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-COPY ./lineup-generation/v2/static/schedule25-26.json /app/static/schedule25-26.json
+# Bundle every schedule under static/ so a season rollover is a change of SCHEDULE_FILE,
+# not a Dockerfile edit. The server fails at startup if the file is missing.
+COPY ./lineup-generation/v2/static/ /app/static/
+
+ENV SCHEDULE_FILE=/app/static/schedule26-27.json
 
 CMD ["./exec"]
