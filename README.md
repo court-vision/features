@@ -24,7 +24,6 @@ features/
 ├── go.mod                         # Root module (module: features, go 1.22.4)
 ├── Dockerfile                     # Builds and runs lineup-generation/v2
 └── lineup-generation/
-    ├── v1/                        # Original genetic algorithm (fetched ESPN data itself). Archived.
     ├── v2/                        # Production service
     │   ├── v2.go                  # Entry point, HTTP handlers, OptimizeStreaming()
     │   ├── v2_test.go             # Handler tests (httptest)
@@ -178,7 +177,7 @@ Response keys are PascalCase (Go field names; the response structs have no JSON 
 
 CORS headers are set to `*` on all `/generate-lineup` responses and `OPTIONS` preflights are answered, so the service can be called without a proxy.
 
-> **Note**: v1 used a different endpoint path (`POST /optimize/`) and accepted ESPN league credentials to fetch player data itself. v2 requires the caller (the backend) to supply `roster_data` and `free_agent_data` directly.
+> **Note**: the retired v1 used a different endpoint path (`POST /optimize/`) and accepted ESPN league credentials to fetch player data itself. v2 deliberately does not: the caller (the backend) supplies `roster_data` and `free_agent_data`, so no league credentials ever reach this service.
 
 ---
 
@@ -237,7 +236,7 @@ Game schedules are static JSON files under `lineup-generation/v2/static/` (one p
 - `gameSpan` is the number of days in the week — 7 normally, 6 for the opening week, and 14 for the week that absorbs the All-Star break.
 - `games` maps an NBA team tricode to the set of 0-indexed day offsets within the week on which that team plays. Only days with a game are present.
 
-The file must be regenerated every season from the NBA's published league schedule (`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json`; `lineup-generation/v1/setup/` shows the transformation). Commit it under `static/`, then bump the `SCHEDULE_FILE` default in `v2.go` and the `Dockerfile`. The server will refuse to start on a missing file and `/healthz` reports which file is loaded.
+The file is regenerated every season by `backend/scripts/build_season_calendar.py --season {YYYY-YY} --fetch --check`, which writes it straight into `lineup-generation/v2/static/` (along with `backend/static` and `data-platform/static`). Commit it under `static/`, then bump the `SCHEDULE_FILE` default in `v2.go` and the `Dockerfile`. See `docs/SEASON_ROLLOVER.md` for the full rollover. The server will refuse to start on a missing file and `/healthz` reports which file is loaded.
 
 ---
 
@@ -287,6 +286,6 @@ In the frontend, lineup generation is triggered from the `/lineup-generation` pa
 
 | Version | Algorithm | ESPN fetch | Endpoint | Status |
 |---|---|---|---|---|
-| v1 | Single-population GA, 75 chromosomes, 25 generations | Yes (direct ESPN API call per request) | `POST /optimize/` | Archived |
+| v1 | Single-population GA, 75 chromosomes, 25 generations | Yes (direct ESPN API call per request) | `POST /optimize/` | Removed — recover from git history if ever needed |
 | v2 | Dual-population GA, 2×20 chromosomes, 30 generations, concurrent | No (caller supplies data) | `POST /generate-lineup` | **Production** |
 | v3 | — | — | — | Empty stub; a future rewrite may replace the scalar objective with a category-aware one |
